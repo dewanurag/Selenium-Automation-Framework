@@ -48,8 +48,18 @@ jobs:
         if: always()
         run: |
           mkdir -p pages-output
+          if [ -f "report.html" ]; then
           cp report.html pages-output/index.html
+          elif [ -f "test-output/report.html" ]; then
+          cp test-output/report.html pages-output/index.html
+          elif [ -f "test-output/index.html" ]; then
+          cp test-output/index.html pages-output/index.html
+          else
+          echo "Warning: No report found. Creating placeholder."
+          echo "<html><body><h1>No test report generated</h1></body></html>" > pages-output/index.html
+          fi
           cp -r screenshots pages-output/screenshots 2>/dev/null || true
+          cp -r test-output pages-output/test-output 2>/dev/null || true
 
       - name: Upload Pages artifact
         if: always()
