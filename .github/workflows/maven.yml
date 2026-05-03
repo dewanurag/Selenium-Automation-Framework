@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4        # v3 → v4
         with:
           name: ExtentReport
-          path: test-output/ExtentReport.html   # correct path
+          path: report.html   # correct path
 
       - name: Upload screenshots on failure
         if: failure()
