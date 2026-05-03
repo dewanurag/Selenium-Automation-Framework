@@ -1,0 +1,58 @@
+# Selenium UI Automation — GitHub Actions Pipeline
+# Runs on push, PR, and daily at 11:15 UTC
+
+name: Selenium Test Automation
+
+on:
+  schedule:
+    - cron: '15 11 * * *'   # daily at 11:15 UTC
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:         # manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run automation framework
+        run: mvn clean test -Dbrowser=chrome -DisHeadless=true
+        # switched to chrome — Edge on ubuntu-latest runners is less stable
+        # removed -X (debug flag) — generates massive log noise in CI, use only when debugging
+
+      - name: Upload ExtentReport
+        if: always()
+        uses: actions/upload-artifact@v4        # v3 → v4
+        with:
+          name: ExtentReport
+          path: test-output/ExtentReport.html   # correct path
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4        # v3 → v4
+        with:
+          name: failure-screenshots
+          path: test-output/screenshots/
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4        # v3 → v4
+        with:
+          name: automation-logs
+          path: logs/automation.log             # correct path
+
+      - name: Execution status
+        if: always()
+        run: echo 'Pipeline execution completed'
