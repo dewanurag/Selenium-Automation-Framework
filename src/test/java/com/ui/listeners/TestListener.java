@@ -30,8 +30,7 @@ public class TestListener implements ITestListener {
 	@Override
 	public void onStart(ITestContext context) {
 		logger.info("Test suite started");
-		String reportPath = "./test-output"
-                + File.separator + "ExtentReport.html";
+		String reportPath = "report.html";
 		ExtentReporterUtility.setupSparkReporter(reportPath);
 	}
 
