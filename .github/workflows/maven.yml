@@ -1,16 +1,24 @@
-# Selenium UI Automation — GitHub Actions Pipeline
-# Runs on push, PR, and daily at 11:15 UTC
-
 name: Selenium Test Automation
 
 on:
   schedule:
-    - cron: '15 11 * * *'   # daily at 11:15 UTC
+    - cron: '15 11 * * *'
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  workflow_dispatch:         # manual trigger from GitHub UI
+  workflow_dispatch:
+
+# REQUIRED — permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# prevent concurrent deployments
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -29,30 +37,58 @@ jobs:
 
       - name: Run automation framework
         run: mvn clean test -Dbrowser=chrome -DisHeadless=true
-        # switched to chrome — Edge on ubuntu-latest runners is less stable
-        # removed -X (debug flag) — generates massive log noise in CI, use only when debugging
 
-      - name: Upload ExtentReport
+      - name: List files to verify report location
         if: always()
-        uses: actions/upload-artifact@v4        # v3 → v4
+        run: |
+          echo "=== project root ==="
+          ls -la
+          echo "=== test-output ==="
+          ls -la test-output/ || echo "test-output not found"
+
+      - name: Prepare report for GitHub Pages
+        if: always()
+        run: |
+          mkdir -p pages-output
+          cp test-output/ExtentReport.html pages-output/index.html
+          # copy screenshots folder too so embedded images work
+          cp -r test-output/screenshots pages-output/screenshots || true
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: ExtentReport
-          path: report.html   # correct path
+          path: pages-output/   # folder to publish
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-logs
+          path: logs/automation.log
 
       - name: Upload screenshots on failure
         if: failure()
-        uses: actions/upload-artifact@v4        # v3 → v4
+        uses: actions/upload-artifact@v4
         with:
           name: failure-screenshots
           path: test-output/screenshots/
 
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4        # v3 → v4
-        with:
-          name: automation-logs
-          path: logs/automation.log             # correct path
-
       - name: Execution status
         if: always()
         run: echo 'Pipeline execution completed'
+
+  # separate job — deploys to GitHub Pages
+  deploy:
+    needs: build           # runs only after build job finishes
+    runs-on: ubuntu-latest
+    if: always()           # deploy even if tests fail — so you can see failure report
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}  # shows URL in Actions summary
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
