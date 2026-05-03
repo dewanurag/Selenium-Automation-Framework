@@ -1,13 +1,16 @@
+# Selenium UI Automation — GitHub Actions Pipeline
+# Runs on push, PR, and daily at 11:15 UTC
+
 name: Selenium Test Automation
 
 on:
   schedule:
-    - cron: '15 11 * * *'
+    - cron: '15 11 * * *'   # daily at 11:15 UTC
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  workflow_dispatch:
+  workflow_dispatch:         # manual trigger from GitHub UI
 
 jobs:
   build:
@@ -26,31 +29,29 @@ jobs:
 
       - name: Run automation framework
         run: mvn clean test -Dbrowser=chrome -DisHeadless=true
-
-      - name: Find all HTML files
-        if: always()
-        run: find . -name "*.html" 2>/dev/null
+        # switched to chrome — Edge on ubuntu-latest runners is less stable
+        # removed -X (debug flag) — generates massive log noise in CI, use only when debugging
 
       - name: Upload ExtentReport
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4        # v3 → v4
         with:
           name: ExtentReport
-          path: report.html        # your actual report location
+          path: report.html   # correct path
 
-      - name: Upload screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4        # v3 → v4
         with:
-          name: screenshots
-          path: screenshots/
+          name: failure-screenshots
+          path: test-output/screenshots/
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4        # v3 → v4
         with:
           name: automation-logs
-          path: logs/automation.log
+          path: logs/automation.log             # correct path
 
       - name: Execution status
         if: always()
